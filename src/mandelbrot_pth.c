@@ -110,7 +110,6 @@ void write_to_file(){
     int max_color_component_value = 255;
 
     file = fopen(filename,"wb");
-
     fprintf(file, "P6\n %s\n %d\n %d\n %d\n", comment,
             i_x_max, i_y_max, max_color_component_value);
 
@@ -121,7 +120,7 @@ void write_to_file(){
     fclose(file);
 };
 
-void compute_mandelbrot(int i_x_min, int i_x_max){
+void* compute_mandelbrot(void *args){
     double z_x;
     double z_y;
     double z_x_squared;
@@ -131,6 +130,7 @@ void compute_mandelbrot(int i_x_min, int i_x_max){
     int iteration;
     int i_x;
     int i_y;
+   
 
     double c_x;
     double c_y;
@@ -188,7 +188,7 @@ void compute_mandelbrot_pthreads(){
     }
     error_code = pthread_create(&threads[i],
                                 NULL,
-                                (void *) compute_mandelbrot,
+                                compute_mandelbrot,
                                 (void *)&data[i]);
     if(error_code){
       printf("pthread_create returned error code %d for thread %d" ,
@@ -211,8 +211,6 @@ int main(int argc, char *argv[]){
     //stop_timer();
     write_to_file();
     // TESTING DIVISION OF INTEGERS
-    double n_pixels;
-    n_pixels=(c_x_max - c_x_min)/pixel_width;
-    printf("%lf",n_pixels);
+    printf("OK!");
     return 0;
 };

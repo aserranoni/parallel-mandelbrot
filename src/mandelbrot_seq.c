@@ -165,6 +165,6 @@ int main(int argc, char *argv[]){
     compute_mandelbrot();
 
     write_to_file();
-
+    printf("OK!");
     return 0;
 };
