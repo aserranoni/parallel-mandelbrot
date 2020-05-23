@@ -11,6 +11,7 @@ double c_y_max;
 
 struct thread_data{
   int thread_id;
+  int task_size;
   double  c_x_min;
   double c_x_max;
 };
@@ -125,11 +126,14 @@ void* compute_mandelbrot(void *args){
   int thread_id;
   double  c_x_min;
   double c_x_max;
+  int task_size;
   struct thread_data *data;
+
   data = (struct thread_data *) args;
   thread_id=data->thread_id;
   c_x_min= data->c_x_min;
   c_x_max=data->c_x_max;
+
   // Previous routine
     double z_x;
     double z_y;
@@ -140,7 +144,6 @@ void* compute_mandelbrot(void *args){
     int iteration;
     int i_x;
     int i_y;
-   
 
     double c_x;
     double c_y;
@@ -152,7 +155,7 @@ void* compute_mandelbrot(void *args){
             c_y = 0.0;
         };
 
-        for(i_x = i_x_min; i_x < i_x_max; i_x++){
+        for(i_x = 0; i_x < task_size; i_x++){
             c_x         = c_x_min + i_x * pixel_width;
 
             z_x         = 0.0;
@@ -183,12 +186,13 @@ void compute_mandelbrot_pthreads(){
   struct thread_data data[n_threads];
   int i=0;
   int error_code;
-  double task_size ;
+  int task_size ;
   // Divide Tasks for each thread
-  task_size=image_size/n_threads;
+  task_size= image_size/n_threads;
   //Procedure
   for (i=0; i<n_threads;i++){
     data[i].thread_id=i+1;
+    data[i].task_size = task_size;
     if(i==0){
     data[i].c_x_min=0;
     data[i].c_x_max= task_size;}
