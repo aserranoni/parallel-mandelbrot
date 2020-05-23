@@ -121,6 +121,16 @@ void write_to_file(){
 };
 
 void* compute_mandelbrot(void *args){
+  //Data initialization
+  int thread_id;
+  double  c_x_min;
+  double c_x_max;
+  struct thread_data *data;
+  data = (struct thread_data *) args;
+  thread_id=data->thread_id;
+  c_x_min= data->c_x_min;
+  c_x_max=data->c_x_max;
+  // Previous routine
     double z_x;
     double z_y;
     double z_x_squared;
