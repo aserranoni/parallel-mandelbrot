@@ -2,6 +2,42 @@
 #include <stdlib.h>
 #include <math.h>
 #include <omp.h>
+#include <time.h>
+#include <sys/time.h>
+
+struct timer_info {
+    clock_t c_start;
+    clock_t c_end;
+    struct timespec t_start;
+    struct timespec t_end;
+    struct timeval v_start;
+    struct timeval v_end;
+};
+
+struct timer_info timer;
+
+void start_timer(){
+  timer.c_start = clock();
+  clock_gettime(CLOCK_MONOTONIC, &timer.t_start);
+  gettimeofday(&timer.v_start, NULL);
+}
+
+void stop_timer(){
+  timer.c_end = clock();
+  clock_gettime(CLOCK_MONOTONIC, &timer.t_end);
+  gettimeofday(&timer.v_end, NULL);
+}
+
+void print_results(){
+  printf("Output file created successfully!\n");
+  printf("[%f, clock], [%f, clock_gettime], [%f, gettimeofday]\n",
+               (double) (timer.c_end - timer.c_start) / (double) CLOCKS_PER_SEC,
+               (double) (timer.t_end.tv_sec - timer.t_start.tv_sec) +
+               (double) (timer.t_end.tv_nsec - timer.t_start.tv_nsec) / 1000000000.0,
+               (double) (timer.v_end.tv_sec - timer.v_start.tv_sec) +
+               (double) (timer.v_end.tv_usec - timer.v_start.tv_usec) / 1000000.0);
+}
+
 
 double c_x_min;
 double c_x_max;
@@ -12,7 +48,7 @@ double pixel_width;
 double pixel_height;
 
 int iteration_max = 200;
-int OMP_NUM_THREADS;
+int n_threads;
 int image_size;
 unsigned char **image_buffer;
 
@@ -66,7 +102,14 @@ void init(int argc, char *argv[]){
         sscanf(argv[3], "%lf", &c_y_min);
         sscanf(argv[4], "%lf", &c_y_max);
         sscanf(argv[5], "%d", &image_size);
-	sscanf(argv[6],"%d",  &OMP_NUM_THREADS);
+	sscanf(argv[6],"%d",  &n_threads);
+
+	if(n_threads>image_size){
+	  printf("You requested more threads than necessary. Adjusting values...\n");
+	  n_threads = image_size;
+	}
+
+	omp_set_num_threads(n_threads);
         i_x_max           = image_size;
         i_y_max           = image_size;
         image_buffer_size = image_size * image_size;
@@ -112,6 +155,8 @@ void write_to_file(){
     fclose(file);
 };
 
+
+
 void compute_mandelbrot(){
     double z_x;
     double z_y;
@@ -126,13 +171,12 @@ void compute_mandelbrot(){
     double c_x;
     double c_y;
     int task_size;
-    task_size=100;
-#pragma omp parallel for private(c_x,c_y,i_y,i_x ,iteration , z_y,z_x,z_x_squared, z_y_squared) schedule(dynamic,task_size)
+    int thread_id;
+    
+    task_size = image_size/n_threads;
+#pragma omp parallel for private(c_x,c_y,i_y,i_x ,iteration , z_y,z_x,z_x_squared, z_y_squared) shared(escape_radius_squared) schedule(static,task_size)
     for(i_y = 0; i_y < i_y_max; i_y++){
-      int thread_id;
-      thread_id=omp_get_thread_num();
-      printf("Hello from thread %d\n", thread_id);
-        c_y = c_y_min + i_y * pixel_height;
+     c_y = c_y_min + i_y * pixel_height;
 
         if(fabs(c_y) < pixel_height / 2){
             c_y = 0.0;
@@ -161,16 +205,17 @@ void compute_mandelbrot(){
             update_rgb_buffer(iteration, i_x, i_y);
         };
     };
-};
+}
 
 int main(int argc, char *argv[]){
     init(argc, argv);
 
     allocate_image_buffer();
-
+    start_timer();
     compute_mandelbrot();
-
+    stop_timer();
     write_to_file();
-    printf("OK!!\n");
+    print_results();
+    printf("DONE!\n");
     return 0;
 };

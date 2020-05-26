@@ -2,11 +2,41 @@
 #include <stdlib.h>
 #include <math.h>
 #include<pthread.h>
+#include <time.h>
+#include <sys/time.h>
 
-double c_x_min;
-double c_x_max;
-double c_y_min;
-double c_y_max;
+struct timer_info {
+    clock_t c_start;
+    clock_t c_end;
+    struct timespec t_start;
+    struct timespec t_end;
+    struct timeval v_start;
+    struct timeval v_end;
+};
+
+struct timer_info timer;
+
+void start_timer(){
+  timer.c_start = clock();
+  clock_gettime(CLOCK_MONOTONIC, &timer.t_start);
+  gettimeofday(&timer.v_start, NULL);
+}
+
+void stop_timer(){
+  timer.c_end = clock();
+  clock_gettime(CLOCK_MONOTONIC, &timer.t_end);
+  gettimeofday(&timer.v_end, NULL);
+}
+
+void print_results(){
+  printf("Output file created successfully!\n");
+  printf("[%f, clock], [%f, clock_gettime], [%f, gettimeofday]\n",
+               (double) (timer.c_end - timer.c_start) / (double) CLOCKS_PER_SEC,
+               (double) (timer.t_end.tv_sec - timer.t_start.tv_sec) +
+               (double) (timer.t_end.tv_nsec - timer.t_start.tv_nsec) / 1000000000.0,
+               (double) (timer.v_end.tv_sec - timer.v_start.tv_sec) +
+               (double) (timer.v_end.tv_usec - timer.v_start.tv_usec) / 1000000.0);
+}
 
 struct thread_data{
   int thread_id;
@@ -15,8 +45,15 @@ struct thread_data{
   double thread_stop;
 };
 
+
+double c_x_min;
+double c_x_max;
+double c_y_min;
+double c_y_max;
+
 double pixel_width;
 double pixel_height;
+
 
 int iteration_max = 200;
 int n_threads;
@@ -75,7 +112,12 @@ void init(int argc, char *argv[]){
         sscanf(argv[5], "%d", &image_size);
         sscanf(argv[6], "%d", &n_threads);
 
-        i_x_max           = image_size;
+	if(n_threads>image_size){
+	  printf("You requested more threads than necessary. Adjusting values...\n");
+	  n_threads = image_size;
+	}
+
+	i_x_max           = image_size;
         i_y_max           = image_size;
         image_buffer_size = image_size * image_size;
 
@@ -223,11 +265,11 @@ int main(int argc, char *argv[]){
     init(argc, argv);
 
     allocate_image_buffer();
-    //start_timer();
+    start_timer();
     compute_mandelbrot_pthreads();
-    //stop_timer();
+    stop_timer();
     write_to_file();
-    // TESTING DIVISION OF INTEGERS
-    printf("OK!\n");
+    print_results();
+    printf("DONE!\n");
     return 0;
 };
