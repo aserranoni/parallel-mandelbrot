@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include<pthread.h>
-#include<time.h>
 
 double c_x_min;
 double c_x_max;
@@ -12,8 +11,8 @@ double c_y_max;
 struct thread_data{
   int thread_id;
   int task_size;
-  double  c_x_min;
-  double c_x_max;
+  double  thread_start;
+  double thread_stop;
 };
 
 double pixel_width;
@@ -21,7 +20,6 @@ double pixel_height;
 
 int iteration_max = 200;
 int n_threads;
-
 int image_size;
 unsigned char **image_buffer;
 
@@ -124,15 +122,14 @@ void write_to_file(){
 void* compute_mandelbrot(void *args){
   //Data initialization
   int thread_id;
-  double  c_x_min;
-  double c_x_max;
+  double  thread_stop;
+  double thread_start;
   int task_size;
   struct thread_data *data;
-
   data = (struct thread_data *) args;
   thread_id=data->thread_id;
-  c_x_min= data->c_x_min;
-  c_x_max=data->c_x_max;
+  thread_start= data->thread_start;
+  thread_stop=data->thread_stop;
 
   // Previous routine
     double z_x;
@@ -147,15 +144,15 @@ void* compute_mandelbrot(void *args){
 
     double c_x;
     double c_y;
-
-    for(i_y = 0; i_y < i_y_max; i_y++){
-        c_y = c_y_min + i_y * pixel_height;
-
+    printf("Thread %d will calculate from %f to %f\n",thread_id, thread_start,thread_stop);
+    for(i_y = thread_start; i_y < thread_stop; i_y++){
+      c_y = c_y_min + i_y * pixel_height;
+	
         if(fabs(c_y) < pixel_height / 2){
             c_y = 0.0;
         };
 
-        for(i_x = 0; i_x < task_size; i_x++){
+        for(i_x = 0; i_x < i_x_max ; i_x++){
             c_x         = c_x_min + i_x * pixel_width;
 
             z_x         = 0.0;
@@ -163,7 +160,7 @@ void* compute_mandelbrot(void *args){
 
             z_x_squared = 0.0;
             z_y_squared = 0.0;
-
+	    
             for(iteration = 0;
                 iteration < iteration_max && \
                 ((z_x_squared + z_y_squared) < escape_radius_squared);
@@ -176,6 +173,7 @@ void* compute_mandelbrot(void *args){
             };
 
             update_rgb_buffer(iteration, i_x, i_y);
+	    //printf("Buffer position (%d,%d) updated", i_x, i_y);
         };
     };
 };
@@ -187,19 +185,21 @@ void compute_mandelbrot_pthreads(){
   int i=0;
   int error_code;
   int task_size ;
+  int rest;
   // Divide Tasks for each thread
   task_size= image_size/n_threads;
+  rest=image_size % n_threads;
   //Procedure
   for (i=0; i<n_threads;i++){
     data[i].thread_id=i+1;
     data[i].task_size = task_size;
     if(i==0){
-    data[i].c_x_min=0;
-    data[i].c_x_max= task_size;}
+    data[i].thread_start=0;
+    data[i].thread_stop= task_size + rest;}
     else {
-      data[i].c_x_min=data[i-1].c_x_max + 1;
-      data[i].c_x_max=data[i].c_x_min + task_size;
-    }
+      data[i].thread_start=data[i-1].thread_stop + 1;
+      data[i].thread_stop=data[i-1].thread_stop + task_size;
+    };
     error_code = pthread_create(&threads[i],
                                 NULL,
                                 compute_mandelbrot,
@@ -211,7 +211,10 @@ void compute_mandelbrot_pthreads(){
       exit(-1);
     }
   }
-
+  i=0;
+  for(i=0;i<n_threads;i++){
+    pthread_join(threads[i],NULL);}
+        
   printf("Mandelbrot set found successfully!\n");
 
 }
@@ -225,6 +228,6 @@ int main(int argc, char *argv[]){
     //stop_timer();
     write_to_file();
     // TESTING DIVISION OF INTEGERS
-    printf("OK!");
+    printf("OK!\n");
     return 0;
 };

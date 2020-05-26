@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <omp.h>
 
 double c_x_min;
 double c_x_max;
@@ -11,7 +12,7 @@ double pixel_width;
 double pixel_height;
 
 int iteration_max = 200;
-
+int OMP_NUM_THREADS;
 int image_size;
 unsigned char **image_buffer;
 
@@ -51,12 +52,12 @@ void allocate_image_buffer(){
 
 void init(int argc, char *argv[]){
     if(argc < 6){
-        printf("usage: ./mandelbrot_omp c_x_min c_x_max c_y_min c_y_max image_size\n");
+        printf("usage: ./mandelbrot_omp c_x_min c_x_max c_y_min c_y_max image_size n_threads\n");
         printf("examples with image_size = 11500:\n");
-        printf("    Full Picture:         ./mandelbrot_omp -2.5 1.5 -2.0 2.0 11500\n");
-        printf("    Seahorse Valley:      ./mandelbrot_omp -0.8 -0.7 0.05 0.15 11500\n");
-        printf("    Elephant Valley:      ./mandelbrot_omp 0.175 0.375 -0.1 0.1 11500\n");
-        printf("    Triple Spiral Valley: ./mandelbrot_omp -0.188 -0.012 0.554 0.754 11500\n");
+        printf("    Full Picture:         ./mandelbrot_omp -2.5 1.5 -2.0 2.0 11500 8\n");
+        printf("    Seahorse Valley:      ./mandelbrot_omp -0.8 -0.7 0.05 0.15 11500 10\n");
+        printf("    Elephant Valley:      ./mandelbrot_omp 0.175 0.375 -0.1 0.1 11500 2\n");
+        printf("    Triple Spiral Valley: ./mandelbrot_omp -0.188 -0.012 0.554 0.754 11500 32\n");
         exit(0);
     }
     else{
@@ -65,7 +66,7 @@ void init(int argc, char *argv[]){
         sscanf(argv[3], "%lf", &c_y_min);
         sscanf(argv[4], "%lf", &c_y_max);
         sscanf(argv[5], "%d", &image_size);
-
+	sscanf(argv[6],"%d",  &OMP_NUM_THREADS);
         i_x_max           = image_size;
         i_y_max           = image_size;
         image_buffer_size = image_size * image_size;
@@ -94,7 +95,7 @@ void update_rgb_buffer(int iteration, int x, int y){
 
 void write_to_file(){
     FILE * file;
-    char * filename               = "output.ppm";
+    char * filename               = "output_omp.ppm";
     char * comment                = "# ";
 
     int max_color_component_value = 255;
@@ -124,8 +125,13 @@ void compute_mandelbrot(){
 
     double c_x;
     double c_y;
-
+    int task_size;
+    task_size=100;
+#pragma omp parallel for private(c_x,c_y,i_y,i_x ,iteration , z_y,z_x,z_x_squared, z_y_squared) schedule(dynamic,task_size)
     for(i_y = 0; i_y < i_y_max; i_y++){
+      int thread_id;
+      thread_id=omp_get_thread_num();
+      printf("Hello from thread %d\n", thread_id);
         c_y = c_y_min + i_y * pixel_height;
 
         if(fabs(c_y) < pixel_height / 2){
@@ -165,6 +171,6 @@ int main(int argc, char *argv[]){
     compute_mandelbrot();
 
     write_to_file();
-
+    printf("OK!!\n");
     return 0;
 };
