@@ -186,7 +186,7 @@ void* compute_mandelbrot(void *args){
 
     double c_x;
     double c_y;
-    printf("Thread %d will calculate from %f to %f\n",thread_id, thread_start,thread_stop);
+    /* printf("Thread %d will calculate from %f to %f\n",thread_id, thread_start,thread_stop); */
     for(i_y = thread_start; i_y < thread_stop; i_y++){
       c_y = c_y_min + i_y * pixel_height;
 	
