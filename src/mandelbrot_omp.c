@@ -29,8 +29,8 @@ void stop_timer(){
 }
 
 void print_results(){
-  printf("Output file created successfully!\n");
-  printf("[%f, clock], [%f, clock_gettime], [%f, gettimeofday]\n",
+  // printf("Output file created successfully!\n");
+  printf("%f, %f, %f",
                (double) (timer.c_end - timer.c_start) / (double) CLOCKS_PER_SEC,
                (double) (timer.t_end.tv_sec - timer.t_start.tv_sec) +
                (double) (timer.t_end.tv_nsec - timer.t_start.tv_nsec) / 1000000000.0,
@@ -214,8 +214,8 @@ int main(int argc, char *argv[]){
     start_timer();
     compute_mandelbrot();
     stop_timer();
-    write_to_file();
+    // write_to_file();
     print_results();
-    printf("DONE!\n");
+    //  printf("DONE!\n");
     return 0;
 };
