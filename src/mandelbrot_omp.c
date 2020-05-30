@@ -29,7 +29,6 @@ void stop_timer(){
 }
 
 void print_results(){
-  // printf("Output file created successfully!\n");
   printf("%f, %f, %f",
                (double) (timer.c_end - timer.c_start) / (double) CLOCKS_PER_SEC,
                (double) (timer.t_end.tv_sec - timer.t_start.tv_sec) +
@@ -48,6 +47,7 @@ double pixel_width;
 double pixel_height;
 
 int iteration_max = 200;
+int i_o;
 int n_threads;
 int image_size;
 unsigned char **image_buffer;
@@ -87,7 +87,7 @@ void allocate_image_buffer(){
 };
 
 void init(int argc, char *argv[]){
-    if(argc < 6){
+    if(argc < 8){
         printf("usage: ./mandelbrot_omp c_x_min c_x_max c_y_min c_y_max image_size n_threads\n");
         printf("examples with image_size = 11500:\n");
         printf("    Full Picture:         ./mandelbrot_omp -2.5 1.5 -2.0 2.0 11500 8\n");
@@ -102,12 +102,8 @@ void init(int argc, char *argv[]){
         sscanf(argv[3], "%lf", &c_y_min);
         sscanf(argv[4], "%lf", &c_y_max);
         sscanf(argv[5], "%d", &image_size);
-	sscanf(argv[6],"%d",  &n_threads);
-
-	if(n_threads>image_size){
-	  printf("You requested more threads than necessary. Adjusting values...\n");
-	  n_threads = image_size;
-	}
+	sscanf(argv[6], "%d", &i_o);
+	sscanf(argv[7],"%d",  &n_threads);
 
 	omp_set_num_threads(n_threads);
         i_x_max           = image_size;
@@ -165,25 +161,26 @@ void compute_mandelbrot(){
     double escape_radius_squared = 4;
 
     int iteration;
-    int i_x;
-    int i_y;
+    int i;
+    int line;
+    int col;
 
     double c_x;
     double c_y;
     int task_size;
-    int thread_id;
+    task_size = image_buffer_size/n_threads;
     
-    task_size = image_size/n_threads;
-#pragma omp parallel for private(c_x,c_y,i_y,i_x ,iteration , z_y,z_x,z_x_squared, z_y_squared) shared(escape_radius_squared) schedule(static,task_size)
-    for(i_y = 0; i_y < i_y_max; i_y++){
-     c_y = c_y_min + i_y * pixel_height;
+#pragma omp parallel for private(c_x,c_y,i,iteration,line,col,z_y,z_x,z_x_squared, z_y_squared) shared(escape_radius_squared) schedule(static,task_size)
+    for(i = 0; i < image_buffer_size; i++){
+      line = i/image_size;
+      col =i%image_size;
+     c_y = c_y_min + line * pixel_height;
 
         if(fabs(c_y) < pixel_height / 2){
             c_y = 0.0;
         };
 
-        for(i_x = 0; i_x < i_x_max; i_x++){
-            c_x         = c_x_min + i_x * pixel_width;
+            c_x         = c_x_min + col * pixel_width;
 
             z_x         = 0.0;
             z_y         = 0.0;
@@ -202,20 +199,26 @@ void compute_mandelbrot(){
                 z_y_squared = z_y * z_y;
             };
 
-            update_rgb_buffer(iteration, i_x, i_y);
-        };
+            update_rgb_buffer(iteration, col, line);
     };
 }
 
 int main(int argc, char *argv[]){
-    init(argc, argv);
-
+  init(argc,argv);
+  if(i_o==1){
+    start_timer();
+    allocate_image_buffer();
+    compute_mandelbrot();
+    write_to_file();
+    stop_timer();
+    print_results();   
+  }
+  else{
     allocate_image_buffer();
     start_timer();
     compute_mandelbrot();
     stop_timer();
-    // write_to_file();
     print_results();
-    //  printf("DONE!\n");
-    return 0;
+  }
+  return 0;
 };
